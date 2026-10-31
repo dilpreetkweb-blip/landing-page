@@ -33,6 +33,11 @@ const fillMyself = () => {
   const t = [...demo.extrasA.items, ...demo.extrasB.items].reduce((x, [, v]) => x + v, 0);
   demo.budget.find(([n]) => n === 'Myself')[2] = Math.round(t * 100) / 100;
 };
+// Edition switches (set per build in the loop at the bottom)
+let LOW = false;  // low-ink: outlines instead of solid colour
+let DOTS = true;  // dot grid inside the page panels
+// Solid fill in the colour edition; a thin highlighter stripe in low-ink
+const tint = (c) => (LOW ? `background:#fff;box-shadow:inset 0 -1.4mm 0 ${c}` : `background:${c}`);
 const money = (n) =>
   '$ ' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const spaced = (w) => w.split('').map((ch) => (ch === ' ' ? '&nbsp;&nbsp;' : ch)).join('<i>•</i>');
@@ -81,7 +86,7 @@ let seed = 7;
 const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
 
 // ---------- shared CSS ----------
-const css = `
+const css = () => `
 @font-face{font-family:Gaegu;src:url(${FONT('Gaegu-Bold.ttf')});font-weight:700}
 @font-face{font-family:Patrick;src:url(${FONT('PatrickHand.ttf')})}
 @font-face{font-family:Caveat;src:url(${FONT('Caveat.ttf')})}
@@ -93,8 +98,8 @@ html,body{background:#fff}
 body{font-family:Patrick,sans-serif;color:${C.ink};-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .page{width:148mm;height:210mm;position:relative;overflow:hidden;page-break-after:always;background:#fff}
 .band{position:absolute;inset:4mm;border-radius:2.5mm}
-.panel{position:absolute;left:10mm;right:10mm;top:21mm;bottom:10mm;background-color:${C.paper};
-  background-image:radial-gradient(circle,#c4beb3 0.22mm,transparent 0.3mm);background-size:5mm 5mm;background-position:2.5mm 2.5mm;
+.panel{position:absolute;left:10mm;right:10mm;top:21mm;bottom:10mm;background-color:${LOW ? '#fff' : C.paper};
+  background-image:${DOTS ? 'radial-gradient(circle,#c4beb3 0.22mm,transparent 0.3mm)' : 'none'};background-size:5mm 5mm;background-position:2.5mm 2.5mm;
   border:0.45mm solid ${C.ink};border-radius:0.6mm}
 .title{position:absolute;left:0;right:0;top:7.5mm;text-align:center;font-family:Gaegu;font-weight:700;font-size:25pt;letter-spacing:0.5mm;line-height:1}
 .title i{font-style:normal;font-size:12pt;vertical-align:middle;margin:0 1.4mm;position:relative;top:-0.6mm}
@@ -105,12 +110,12 @@ body{font-family:Patrick,sans-serif;color:${C.ink};-webkit-print-color-adjust:ex
 .line{border-bottom:0.3mm solid #8d877d}
 .small{font-size:8.5pt;color:#6b655c;letter-spacing:0.3mm}
 .foot{position:absolute;left:0;right:0;bottom:5.2mm;text-align:center;font-size:6.5pt;color:#8d877d;letter-spacing:0.6mm}
-table{border-collapse:collapse;table-layout:fixed}
+table{border-collapse:collapse;table-layout:fixed;line-height:1.05}
 `;
 
 const page = (bandColor, title, inner, opts = {}) => `
 <section class="page">
-  <div class="band" style="background:${bandColor}"></div>
+  <div class="band" style="${LOW ? `border:0.9mm solid ${bandColor}` : `background:${bandColor}`}"></div>
   ${title ? `<div class="title">${spaced(title)}</div>` : ''}
   <div class="panel" style="${opts.panelStyle || ''}">${inner}</div>
   <div class="foot">CHAPTER BY CHAPTER</div>
@@ -122,16 +127,16 @@ function rings(colors, center) {
   const step = 5.2;
   colors.forEach((col, i) => {
     const inset = 4 + i * step;
-    html += `<div style="position:absolute;inset:${inset}mm;border-radius:${Math.max(3, 10 - i)}mm;background:${col};
-      box-shadow:inset 0 0 0 0.35mm ${C.ink}, inset 0 0 0 0.75mm ${col}, inset 0 0 0 1.05mm ${C.ink}"></div>`;
+    html += `<div style="position:absolute;inset:${inset}mm;border-radius:${Math.max(3, 10 - i)}mm;${LOW ? `background:#fff;border:0.7mm solid ${col}` : `background:${col};
+      box-shadow:inset 0 0 0 0.35mm ${C.ink}, inset 0 0 0 0.75mm ${col}, inset 0 0 0 1.05mm ${C.ink}`}"></div>`;
   });
   const last = 4 + colors.length * step;
   return html + `<div style="position:absolute;inset:${last}mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">${center}</div>`;
 }
 const RING_COLORS = [C.green, C.olive, C.green, C.olive, C.peach, C.orange, C.yellow, C.peach, C.yellow];
 const outlined = (txt, size) =>
-  `<div style="font-family:Fredoka;font-size:${size}pt;line-height:1;color:${C.yellow};-webkit-text-stroke:0.55mm ${C.ink};
-   paint-order:stroke fill;text-shadow:0.8mm 0.8mm 0 ${C.ink};letter-spacing:1mm">${txt}</div>`;
+  `<div style="font-family:Fredoka;font-size:${size}pt;line-height:1;color:${LOW ? '#fff' : C.yellow};-webkit-text-stroke:${LOW ? '0.4mm' : '0.55mm'} ${C.ink};
+   paint-order:stroke fill;text-shadow:${LOW ? `0.7mm 0.7mm 0 ${C.pinkSoft}` : `0.8mm 0.8mm 0 ${C.ink}`};letter-spacing:1mm">${txt}</div>`;
 
 // ---------- pages ----------
 function cover() {
@@ -158,7 +163,7 @@ function howTo() {
   ];
   const rows = steps.map(([c, t, d], i) => `
     <div style="display:flex;align-items:center;gap:3mm;margin-bottom:3.2mm">
-      <div style="width:7mm;height:7mm;border-radius:50%;background:${c};border:0.35mm solid ${C.ink};display:flex;align-items:center;justify-content:center;font-size:10pt">${i + 1}</div>
+      <div style="width:7mm;height:7mm;border-radius:50%;${LOW ? `background:#fff;border:0.6mm solid ${c}` : `background:${c};border:0.35mm solid ${C.ink}`};display:flex;align-items:center;justify-content:center;font-size:10pt">${i + 1}</div>
       <div><div style="font-size:12pt;letter-spacing:0.5mm">${t.toUpperCase()}</div><div class="small">${d}</div></div>
     </div>`).join('');
   return page(C.pinkSoft, 'HOW IT WORKS', `<div class="pad">
@@ -183,7 +188,7 @@ function chapterPage(filled) {
   const hearts = [[12, 10, -12], [58, 6, 8], [96, 22, 18], [6, 92, -20], [70, 104, 10], [98, 128, 14], [16, 150, -8], [104, 70, 0]];
   const heartSvg = (x, y, r) => `<svg style="position:absolute;left:${x}mm;top:${y}mm;width:20mm;height:18mm;transform:rotate(${r}deg)" viewBox="0 0 40 36">
     <path d="M20 33 C6 23 2 16 2 10 C2 5 6 2 11 2 C15 2 18 4 20 8 C22 4 25 2 29 2 C34 2 38 5 38 10 C38 16 34 23 20 33Z"
-      fill="none" stroke="${C.pinkSoft}" stroke-width="7" stroke-linejoin="round"/>
+      fill="none" stroke="${LOW ? 'none' : C.pinkSoft}" stroke-width="7" stroke-linejoin="round"/>
     <path d="M20 33 C6 23 2 16 2 10 C2 5 6 2 11 2 C15 2 18 4 20 8 C22 4 25 2 29 2 C34 2 38 5 38 10 C38 16 34 23 20 33Z"
       fill="none" stroke="${C.pink}" stroke-width="3" stroke-linejoin="round"/></svg>`;
   const lines = filled
@@ -222,7 +227,7 @@ function summary(filled) {
     ${section('SAVINGS', savingRows.map(([l, v]) => row(l || '', v)).join(''), saveTotal,
       `<div class="small" style="margin-bottom:1mm">goal: ${filled ? hand(demo.savingsGoal, true) : '____'} % of what I earn</div>`)}
     ${section('SPENDING', [['Expenses', expenses], ['Myself', myself]].map(([l, v]) => row(l, v)).join(''), spendTotal)}
-    <div style="margin-top:1mm;border:0.4mm solid ${C.ink};border-radius:2mm;background:${C.yellow};padding:2mm 3mm;display:flex;justify-content:space-between;align-items:center">
+    <div style="margin-top:1mm;border:0.4mm solid ${C.ink};border-radius:2mm;${tint(C.yellow)};padding:2mm 3mm;display:flex;justify-content:space-between;align-items:center">
       <div><div style="font-size:11pt;letter-spacing:0.6mm">REMAINING</div><div class="small" style="color:${C.ink}">earned − saved − spent</div></div>
       <div class="red" style="font-size:18pt">${filled ? money(remaining) : '$ ________'}</div>
     </div></div>`);
@@ -270,7 +275,7 @@ function extras(filled) {
         <span>${it ? `= ${hand('$' + it[1].toFixed(2), true)}` : '= $&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></div>`;
     }
     return `<div style="flex:1;padding:0 2mm">
-      <div style="text-align:center;margin-bottom:2mm"><span class="hl" style="background:${color}">${filled ? data.title.toUpperCase() : '&nbsp;'.repeat(36)}</span></div>
+      <div style="text-align:center;margin-bottom:2mm"><span class="hl" style="${tint(color)}">${filled ? data.title.toUpperCase() : '&nbsp;'.repeat(36)}</span></div>
       ${lis}
       <div style="height:14mm;display:flex;align-items:center;justify-content:center;border-bottom:0.4mm solid ${C.ink}"><span class="red">${filled ? money(total) : '$'}</span></div>
     </div>`;
@@ -307,7 +312,7 @@ function habits(filled) {
   const H = demo.habits;
   const n = H.names.length;
   const dayW = 10, colW = (122 - dayW) / n;
-  const groupRow = H.groups.map(([g, k, c]) => `<td colspan="${k}" style="border:0.3mm solid ${C.ink};text-align:center;font-size:8.5pt;letter-spacing:0.5mm;height:7mm;background:${c}">${g}</td>`).join('');
+  const groupRow = H.groups.map(([g, k, c]) => `<td colspan="${k}" style="border:0.3mm solid ${C.ink};text-align:center;font-size:8.5pt;letter-spacing:0.5mm;height:7mm;${tint(c)}">${g}</td>`).join('');
   // habit names print in both editions; the last column is left for the owner's own habit
   const names = H.names.map((nm) => `<td style="border:0.3mm solid ${C.ink};height:25mm;position:relative">
       <div style="position:absolute;left:2.2mm;bottom:2mm;transform:rotate(-62deg);transform-origin:left bottom;white-space:nowrap;font-size:9pt;letter-spacing:0.2mm">${nm || '<span style="color:#aaa">__________</span>'}</div></td>`).join('');
@@ -315,7 +320,7 @@ function habits(filled) {
   H.groups.forEach(([, k, c]) => { for (let i = 0; i < k; i++) colColors.push(c); });
   let body = '';
   for (let d = 1; d <= 31; d++) {
-    body += `<tr style="height:4.2mm"><td style="border:0.25mm solid ${C.ink};text-align:center;font-size:8.5pt">${d}</td>` +
+    body += `<tr style="height:4.4mm"><td style="border:0.25mm solid ${C.ink};text-align:center;font-size:8.5pt">${d}</td>` +
       colColors.map((c, i) => `<td style="border:0.25mm solid ${C.ink};${cellFill(filled, H.probs[i], c)}"></td>`).join('') + '</tr>';
   }
   return page(C.pink, 'HABITS', `
@@ -342,14 +347,14 @@ function tracker(filled) {
     const vals = filled ? [water + 'L', protein + 'g', steps + 'K', sleep + ' hr', mem] : ['', '', '', '', ''];
     const hit = filled ? [water >= 2.5, protein >= 80, steps >= 7, sleep >= 8, !!mem] : [];
     const hiCol = [C.yellow, C.yellow, C.yellow, C.yellow, C.pinkSoft];
-    body += `<tr style="height:4.2mm"><td style="border:0.25mm solid ${C.ink};text-align:center;font-size:8.5pt">${d}</td>` +
+    body += `<tr style="height:4.4mm"><td style="border:0.25mm solid ${C.ink};text-align:center;font-size:8.5pt">${d}</td>` +
       vals.map((v, i) => `<td style="border:0.25mm solid ${C.ink};text-align:${i === 4 ? 'left;padding-left:1.5mm' : 'center'};font-family:Gochi;font-size:8pt;color:#24305E;white-space:nowrap;overflow:hidden;${hit[i] ? `background:${hiCol[i]}` : ''}">${v}</td>`).join('') + '</tr>';
   }
   return page(C.pink, 'TRACKER', `
     <table style="position:absolute;left:3mm;top:3mm;width:122mm">
       <colgroup><col style="width:10mm">${widths.map((w) => `<col style="width:${w}mm">`).join('')}</colgroup>
-      <tr><td></td><td colspan="4" style="border:0.3mm solid ${C.ink};text-align:center;font-size:8.5pt;letter-spacing:0.5mm;height:7mm;background:${C.yellow}">NUMBERS</td>
-          <td style="border:0.3mm solid ${C.ink};text-align:center;font-size:8.5pt;letter-spacing:0.5mm;background:${C.pinkSoft}">TODAY'S PICTURE</td></tr>
+      <tr><td></td><td colspan="4" style="border:0.3mm solid ${C.ink};text-align:center;font-size:8.5pt;letter-spacing:0.5mm;height:7mm;${tint(C.yellow)}">NUMBERS</td>
+          <td style="border:0.3mm solid ${C.ink};text-align:center;font-size:8.5pt;letter-spacing:0.5mm;${tint(C.pinkSoft)}">TODAY'S PICTURE</td></tr>
       <tr style="height:10mm"><td style="border:0.3mm solid ${C.ink};font-size:8pt;text-align:center">DAY</td>
         ${heads.map((h) => `<td style="border:0.3mm solid ${C.ink};text-align:center;font-size:10pt">${h}</td>`).join('')}</tr>
       <tr style="height:6.5mm;background:#fff"><td style="border:0.3mm solid ${C.ink};font-size:7pt;text-align:center">GOAL</td>
@@ -364,11 +369,11 @@ function close(filled) {
     `<div class="line" style="height:8.5mm;display:flex;align-items:flex-end;padding-bottom:0.6mm"><span style="width:6mm">${i + 1}.</span>${filled && arr[i] ? hand(arr[i], true) : ''}</div>`).join('');
   const moods = ['😣', '😕', '😐', '🙂', '😍'];
   return page(C.green, 'CHAPTER CLOSE', `<div class="pad" style="top:5mm">
-    <span class="hl" style="background:${C.yellow}">3 WINS</span>${lines(demo.wins, 3)}
+    <span class="hl" style="${tint(C.yellow)}">3 WINS</span>${lines(demo.wins, 3)}
     <div style="height:5mm"></div>
-    <span class="hl" style="background:${C.pink}">1 LESSON</span>${lines([demo.lesson], 2)}
+    <span class="hl" style="${tint(C.pink)}">1 LESSON</span>${lines([demo.lesson], 2)}
     <div style="height:5mm"></div>
-    <span class="hl" style="background:${C.green}">NEXT CHAPTER I WILL…</span>${lines([demo.next], 2)}
+    <span class="hl" style="${tint(C.green)}">NEXT CHAPTER I WILL…</span>${lines([demo.next], 2)}
     <div style="height:6mm"></div>
     <div class="small" style="color:${C.ink}">MONEY MOOD THIS MONTH</div>
     <div style="display:flex;gap:4mm;margin-top:2mm">${moods.map((m, i) => `<div style="width:12mm;height:12mm;border-radius:50%;border:0.35mm solid ${C.ink};display:flex;align-items:center;justify-content:center;font-size:15pt;${filled && i === 3 ? `background:${C.yellow}` : 'background:#fff'}">${m}</div>`).join('')}</div>
@@ -381,7 +386,7 @@ function close(filled) {
 function build(filled) {
   seed = 7;
   const pages = [cover(), howTo(), opener(filled), chapterPage(filled), summary(filled), budget(filled), extras(filled), bills(filled), habits(filled), tracker(filled), close(filled)];
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${pages.join('')}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${css()}</style></head><body>${pages.join('')}</body></html>`;
 }
 
 (async () => {
@@ -389,7 +394,13 @@ function build(filled) {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ deviceScaleFactor: 2 });
   const p = await ctx.newPage();
-  for (const [name, filled] of [['sample-filled', true], ['printable-blank', false]]) {
+  const editions = [
+    ['sample-filled', true, false, true],
+    ['printable-blank', false, false, true],
+    ['printable-low-ink', false, true, false],
+  ];
+  for (const [name, filled, low, dots] of editions) {
+    LOW = low; DOTS = dots;
     const html = build(filled);
     const htmlPath = path.join(OUT, `chapter-by-chapter-${name}.html`);
     fs.writeFileSync(htmlPath, html);
